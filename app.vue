@@ -1,58 +1,48 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import liff from '@line/liff';
+    import { ref, onMounted } from 'vue';
 
-// -- ตั้งค่า --
-// นำ LIFF ID ที่คัดลอกมาวางที่นี่
+    // -- ตั้งค่า --
+    // นำ LIFF ID ที่คัดลอกมาวางที่นี่
     const LIFF_ID = '2007601116-6GoXj5DR';
-// -----------
+    // -----------
 
-// สร้างตัวแปรสำหรับเก็บข้อมูลแบบ Real-time
-const profile = ref(null);
-const error = ref(null);
-const isLoading = ref(true);
+    // สร้างตัวแปรสำหรับเก็บข้อมูลแบบ Real-time
+    const profile = ref(null);
+    const error = ref(null);
+    const isLoading = ref(true);
 
-// onMounted คือคำสั่งที่จะทำงานอัตโนมัติเมื่อหน้าเว็บถูกโหลดขึ้นมา
-onMounted(() => {
-  // เริ่มต้นการเชื่อมต่อกับ LIFF SDK
-  liff.init({
-    liffId: LIFF_ID
-  })
-  .then(() => {
-    // เมื่อเชื่อมต่อสำเร็จ
-    console.log('LIFF initialized successfully.');
+    // onMounted คือคำสั่งที่จะทำงาน "เฉพาะในฝั่งเบราว์เซอร์" เท่านั้น
+    onMounted(async () => {
+        try {
+            // --- จุดที่แก้ไข ---
+            // เราจะทำการ import ตัว liff ต่อเมื่ออยู่ในเบราว์เซอร์แล้วเท่านั้น
+            const liffModule = await import('@line/liff');
+            const liff = liffModule.default;
+            // ------------------
 
-    // ตรวจสอบว่าผู้ใช้ล็อกอินเข้าสู่ LINE แล้วหรือยัง
-    if (!liff.isLoggedIn()) {
-      // ถ้ายังไม่ล็อกอิน ให้พาไปหน้าล็อกอินของ LINE
-      // (ปกติถ้าเปิดใน LINE จะล็อกอินให้อัตโนมัติ)
-      liff.login();
-      return;
-    }
+            // เริ่มต้นการเชื่อมต่อกับ LIFF SDK
+            await liff.init({ liffId: LIFF_ID });
 
-    // ถ้าล็อกอินแล้ว ให้ดึงข้อมูลโปรไฟล์
-    liff.getProfile()
-      .then(profileData => {
-        // นำข้อมูลที่ได้ไปเก็บในตัวแปร profile ของเรา
-        profile.value = profileData;
-        console.log('Profile loaded:', profileData);
-      })
-      .catch(err => {
-        // จัดการ Error หากดึงโปรไฟล์ไม่สำเร็จ
-        console.error('Profile loading error:', err);
-        error.value = 'ไม่สามารถโหลดข้อมูลโปรไฟล์ได้';
-      });
-  })
-  .catch(err => {
-    // จัดการ Error หากการเชื่อมต่อ LIFF เริ่มต้นไม่สำเร็จ
-    console.error('LIFF initialization failed:', err);
-    error.value = 'ไม่สามารถเริ่มต้นการเชื่อมต่อกับ LINE ได้';
-  })
-  .finally(() => {
-    // เมื่อทุกอย่างเสร็จสิ้น (ไม่ว่าจะสำเร็จหรือล้มเหลว)
-    isLoading.value = false;
-  });
-});
+            console.log('LIFF initialized successfully.');
+
+            // ตรวจสอบว่าผู้ใช้ล็อกอินเข้าสู่ LINE แล้วหรือยัง
+            if (!liff.isLoggedIn()) {
+                liff.login();
+                return;
+            }
+
+            // ถ้าล็อกอินแล้ว ให้ดึงข้อมูลโปรไฟล์
+            const profileData = await liff.getProfile();
+            profile.value = profileData;
+            console.log('Profile loaded:', profileData);
+
+        } catch (err) {
+            console.error('LIFF Error:', err);
+            error.value = `เกิดข้อผิดพลาดในการเชื่อมต่อกับ LINE: ${err.message}`;
+        } finally {
+            isLoading.value = false;
+        }
+    });
 </script>
 
 <template>
