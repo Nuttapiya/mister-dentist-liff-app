@@ -19,7 +19,7 @@ export default async function handler(request, response) {
     const form = formidable();
     form.parse(request, (err, fields, files) => {
       if (err) return reject(err);
-      resolve({ fields, files }); 
+      resolve({ fields, files });
     });
   });
 
@@ -27,15 +27,14 @@ export default async function handler(request, response) {
     const imageFile = data.files.image[0];
     const imageBuffer = fs.readFileSync(imageFile.filepath);
     
-    // --- จุดที่แก้ไข ---
-    // 1. แก้ไข URL ไม่ให้มี // ซ้อนกัน
-    // 2. เอา `returnFaceAttributes` ที่ถูกยกเลิกแล้วออกไปทั้งหมด
-    // เรายังคงขอ `returnFaceLandmarks` ซึ่งเป็นหัวใจสำคัญของโปรเจกต์เราได้อยู่
+    // --- จุดที่แก้ไขครั้งสุดท้าย ---
+    // เราได้เอา `returnFaceId=true` ที่ต้องขออนุญาตก่อนใช้ออกไปแล้ว
+    // เหลือไว้เฉพาะ `returnFaceLandmarks=true` ซึ่งเป็นหัวใจของแอปเราและยังใช้งานได้ปกติ
     const cleanEndpoint = azureEndpoint.endsWith('/') ? azureEndpoint.slice(0, -1) : azureEndpoint;
-    const azureApiUrl = `${cleanEndpoint}/face/v1.0/detect?returnFaceId=true&returnFaceLandmarks=true&detectionModel=detection_01`;
-    // ------------------
+    const azureApiUrl = `${cleanEndpoint}/face/v1.0/detect?returnFaceLandmarks=true&detectionModel=detection_01&returnRecognitionModel=false`;
+    // ----------------------------
 
-    console.log("Calling Azure API with corrected URL:", azureApiUrl);
+    console.log("Calling Azure API with final corrected URL:", azureApiUrl);
 
     const azureResponse = await fetch(azureApiUrl, {
       method: 'POST',
