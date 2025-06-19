@@ -1,43 +1,69 @@
-// นี่คือ Backend ของเราที่ทำงานบน Vercel (Serverless Function)
+import { formidable } from 'formidable';
+import fs from 'fs'; // Library สำหรับจัดการไฟล์
 
+// ตั้งค่าเพื่อให้ Vercel ไม่ประมวลผล Body เอง แต่ให้ formidable จัดการ
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+// นี่คือ Backend ของเราที่จะเชื่อมต่อกับ Azure AI จริงๆ
 export default async function handler(request, response) {
-  // อนุญาตให้ request จากทุกที่เข้ามาได้ (สำหรับทดสอบ)
-  response.setHeader('Access-Control-Allow-Origin', '*');
-  response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // ดึง Key และ Endpoint ที่เราตั้งค่าไว้ใน Vercel Environment Variables
+  const azureKey = process.env.AZURE_FACE_API_KEY;
+  const azureEndpoint = process.env.AZURE_FACE_API_ENDPOINT;
 
-  // จัดการ preflight request สำหรับ CORS
-  if (request.method === 'OPTIONS') {
-    return response.status(200).end();
+  // ตรวจสอบว่า Key/Endpoint ถูกตั้งค่าไว้หรือไม่
+  if (!azureKey || !azureEndpoint) {
+    console.error("Azure credentials are not set in environment variables.");
+    return response.status(500).json({ message: 'Server configuration error.' });
   }
 
-  // ตรวจสอบว่าเป็นการส่งข้อมูลแบบ POST หรือไม่
-  if (request.method !== 'POST') {
-    return response.status(405).json({ message: 'Method Not Allowed' });
-  }
+  // สร้าง Promise เพื่อแปลง formidable ที่เป็น callback-style ให้ทำงานกับ async/await ได้
+  const data = await new Promise((resolve, reject) => {
+    const form = formidable();
+    form.parse(request, (err, fields, files) => {
+      if (err) return reject(err);
+      // 'image' คือชื่อ field ที่เราตั้งใน FormData ของ Frontend
+      resolve({ fields, files }); 
+    });
+  });
 
   try {
-    // ในขั้นตอนนี้ เราจะยังไม่เชื่อมต่อกับ Azure
-    // เราแค่จะทดสอบว่า Backend รับรูปภาพได้สำเร็จหรือไม่
-    
-    // Vercel จะจัดการข้อมูลที่ส่งมาให้เรา
-    // เราไม่จำเป็นต้อง parse multipart/form-data เอง
-    // แต่ในขั้นตอนนี้ เราแค่จะส่งข้อความตอบกลับไปก่อน
-    
-    console.log("Backend received a request!");
+    // ดึงข้อมูลไฟล์รูปภาพที่อัปโหลดมา
+    const imageFile = data.files.image[0];
+    // อ่านข้อมูลรูปภาพจากตำแหน่งที่ถูกเก็บไว้ชั่วคราว
+    const imageBuffer = fs.readFileSync(imageFile.filepath);
 
-    // ส่งข้อความสำเร็จกลับไปให้ Frontend (ชั่วคราว)
-    return response.status(200).json({ 
-      message: "Backend received the image successfully!",
-      analysis: {
-        symmetry: "95%",
-        smile_line: "Good",
-        comment: "This is a placeholder result from the backend."
-      }
+    // เตรียม URL สำหรับยิงไปที่ Azure
+    const azureApiUrl = `${azureEndpoint}/face/v1.0/detect?returnFaceId=true&returnFaceLandmarks=true&returnFaceAttributes=age,gender,smile,emotion,headPose`;
+
+    // ส่ง Request ไปยัง Azure AI ด้วย 'fetch'
+    const azureResponse = await fetch(azureApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'Ocp-Apim-Subscription-Key': azureKey,
+      },
+      body: imageBuffer,
     });
 
+    // หาก Azure ตอบกลับมาว่ามีปัญหา ให้โยน Error
+    if (!azureResponse.ok) {
+      const errorData = await azureResponse.json();
+      console.error("Azure API Error:", errorData);
+      throw new Error(errorData.error.message || 'Azure API returned an error.');
+    }
+
+    // หากสำเร็จ นำข้อมูล JSON ที่ได้จาก Azure ส่งกลับไปให้ Frontend
+    const analysisData = await azureResponse.json();
+    console.log("Successfully received data from Azure.");
+
+    return response.status(200).json(analysisData);
+
   } catch (error) {
-    console.error("Backend Error:", error);
-    return response.status(500).json({ message: 'Internal Server Error' });
+    console.error("Backend Processing Error:", error);
+    return response.status(500).json({ message: error.message || 'Internal Server Error' });
   }
 }
