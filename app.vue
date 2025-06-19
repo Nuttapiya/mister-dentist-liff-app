@@ -1,7 +1,7 @@
 <script setup>
     import { ref, onMounted } from 'vue';
 
-    // ใส่ LIFF ID ของคุณที่นี่
+    // ๏ฟฝ๏ฟฝ๏ฟฝ LIFF ID ๏ฟฝอง๏ฟฝุณ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ
     const LIFF_ID = '2007601116-6GoXj5DR';
 
     const displayName = ref('');
@@ -18,12 +18,12 @@
                 const profile = await liff.getProfile();
                 displayName.value = profile.displayName;
             } else {
-                // ถ้าไม่ล็อกอิน ก็ให้ไปหน้าล็อกอิน
+                // ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝอก๏ฟฝิน ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝหน๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝอก๏ฟฝิน
                 liff.login();
             }
         } catch (e) {
             console.error(e);
-            errorMessage.value = "เกิดข้อผิดพลาด: " + e.message;
+            errorMessage.value = "๏ฟฝิด๏ฟฝ๏ฟฝอผิด๏ฟฝ๏ฟฝาด: " + e.message;
         }
     });
 </script>
@@ -31,14 +31,14 @@
 <template>
     <div style="padding: 20px; font-family: sans-serif; text-align: center;">
         <div v-if="displayName">
-            <h1>สวัสดี, {{ displayName }}!</h1>
-            <p>การเชื่อมต่อ LIFF สำเร็จ!</p>
+            <h1>๏ฟฝ๏ฟฝ๏ฟฝสด๏ฟฝ, {{ displayName }}!</h1>
+            <p>๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ LIFF ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ๏ฟฝ!</p>
         </div>
         <div v-else-if="errorMessage">
             <p style="color: red;">{{ errorMessage }}</p>
         </div>
         <div v-else>
-            <p>กำลังโหลด...</p>
+            <p>๏ฟฝ๏ฟฝ๏ฟฝัง๏ฟฝ๏ฟฝลด...</p>
         </div>
     </div>
 </template>
