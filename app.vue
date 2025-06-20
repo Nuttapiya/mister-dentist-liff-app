@@ -13,12 +13,11 @@ const isAnalyzing = ref(false);
 const selectedFile = ref(null);
 const imagePreviewUrl = ref('');
 
-// --- อัปเดต: เพิ่ม 'lipFullness' เป็นมิติสุดท้าย ---
+// --- อัปเดต: เพิ่ม 'chin' เข้าไปในผลการวิเคราะห์ ---
 const analysisScores = ref({
   symmetry: null,
   cant: null,
   chin: null,
-  lipFullness: null,
 });
 
 // --- ฟังก์ชันคำนวณ ---
@@ -40,28 +39,26 @@ const calculateSmileCant = (landmarks) => {
   return Math.abs(eyeAngle - mouthAngle);
 };
 
+// --- ฟังก์ชันใหม่: คำนวณความเบี้ยวของคาง ---
 const calculateChinDeviation = (landmarks) => {
   if (!landmarks?.noseTip || !landmarks?.underLipBottom || !landmarks?.pupilLeft || !landmarks?.pupilRight) return null;
+  // หาจุดกึ่งกลางระหว่างดวงตาเพื่อเป็นจุดอ้างอิงบนของใบหน้า
   const midPointBetweenEyesX = (landmarks.pupilLeft.x + landmarks.pupilRight.x) / 2;
+  // หาเส้นกึ่งกลางใบหน้าแนวดิ่ง (ใช้ค่าเฉลี่ย X ของจมูกและกึ่งกลางตา)
   const facialMidlineX = (landmarks.noseTip.x + midPointBetweenEyesX) / 2;
+
+  // คำนวณระยะห่างแนวนอนของคางจากเส้นกึ่งกลาง
   const horizontalDeviation = Math.abs(landmarks.underLipBottom.x - facialMidlineX);
+
+  // หาค่าอ้างอิงเพื่อแปลงเป็นเปอร์เซ็นต์ (ใช้ความกว้างระหว่างดวงตา)
   const normalizationFactor = Math.abs(landmarks.pupilRight.x - landmarks.pupilLeft.x);
   if (normalizationFactor === 0) return 100;
-  const deviationRatio = horizontalDeviation / normalizationFactor;
-  const score = Math.max(0, (1 - deviationRatio / 0.1)) * 100;
-  return score;
-};
 
-// --- ฟังก์ชันใหม่: คำนวณสัดส่วนริมฝีปาก ---
-const calculateLipFullness = (landmarks) => {
-  if (!landmarks?.upperLipTop || !landmarks?.upperLipBottom || !landmarks?.lowerLipTop || !landmarks?.lowerLipBottom) return null;
-  const upperLipHeight = Math.abs(landmarks.upperLipBottom.y - landmarks.upperLipTop.y);
-  const lowerLipHeight = Math.abs(landmarks.lowerLipBottom.y - landmarks.lowerLipTop.y);
-  if (lowerLipHeight === 0) return 0;
-  const actualRatio = upperLipHeight / lowerLipHeight;
-  const idealRatio = 1 / 1.6; // ~0.625
-  const error = Math.abs(actualRatio - idealRatio);
-  const score = Math.max(0, (1 - error / 0.5)) * 100;
+  // คำนวณอัตราส่วนความเบี้ยว
+  const deviationRatio = horizontalDeviation / normalizationFactor;
+
+  // แปลงเป็นคะแนนเต็ม 100 (ยิ่งใกล้ยิ่งดี)
+  const score = Math.max(0, (1 - deviationRatio / 0.1)) * 100;
   return score;
 };
 
@@ -91,20 +88,12 @@ const chinInterpretation = computed(() => {
   return 'ควรปรึกษา: คางของคุณมีการเบี่ยงเบนจากแนวกึ่งกลางที่อาจส่งผลต่อโครงสร้างใบหน้า';
 });
 
-const lipFullnessInterpretation = computed(() => {
-  const score = analysisScores.value.lipFullness;
-  if (score === null) return '';
-  if (score >= 90) return 'ยอดเยี่ยม! คุณมีสัดส่วนริมฝีปากที่ใกล้เคียงกับสัดส่วนทองคำ';
-  if (score >= 75) return 'ดี! มีสัดส่วนริมฝีปากที่สวยงามและสมดุล';
-  return 'สัดส่วนริมฝีปากของคุณมีเอกลักษณ์เฉพาะตัว ซึ่งสามารถปรับแก้เพื่อความสวยงามยิ่งขึ้นได้';
-});
-
 
 const analyzeSmile = async () => {
   if (!selectedFile.value) { alert('กรุณาเลือกรูปภาพก่อนครับ'); return; }
   isAnalyzing.value = true;
   errorMessage.value = '';
-  analysisScores.value = { symmetry: null, cant: null, chin: null, lipFullness: null };
+  analysisScores.value = { symmetry: null, cant: null, chin: null };
 
   try {
     const options = { maxSizeMB: 2, maxWidthOrHeight: 1920, useWebWorker: true };
@@ -118,11 +107,10 @@ const analyzeSmile = async () => {
     if (data && data.length > 0) {
       const faceData = data[0];
       if (faceData.faceLandmarks) {
-        // --- อัปเดต: เรียกใช้ฟังก์ชันคำนวณครบทั้ง 4 ตัว ---
+        // --- อัปเดต: เรียกใช้ฟังก์ชันคำนวณทั้งสามตัว ---
         analysisScores.value.symmetry = calculateSmileSymmetry(faceData.faceLandmarks);
         analysisScores.value.cant = calculateSmileCant(faceData.faceLandmarks);
         analysisScores.value.chin = calculateChinDeviation(faceData.faceLandmarks);
-        analysisScores.value.lipFullness = calculateLipFullness(faceData.faceLandmarks);
       } else {
         errorMessage.value = "AI ตรวจจับใบหน้าได้ แต่ไม่สามารถหาตำแหน่งสำคัญบนใบหน้าได้ กรุณาลองรูปที่ชัดเจนยิ่งขึ้น";
       }
@@ -155,10 +143,11 @@ const handleFileChange = (event) => {
   if (file) {
     selectedFile.value = file;
     imagePreviewUrl.value = URL.createObjectURL(file);
-    analysisScores.value = { symmetry: null, cant: null, chin: null, lipFullness: null };
+    analysisScores.value = { symmetry: null, cant: null, chin: null };
     errorMessage.value = '';
   }
 };
+
 </script>
 
 <template>
@@ -212,17 +201,6 @@ const handleFileChange = (event) => {
         </div>
       </div>
       <p class="interpretation">{{ chinInterpretation }}</p>
-    </div>
-    
-    <div v-if="analysisScores.lipFullness !== null" class="card result-card">
-      <h4><span class="emoji">👄</span> สัดส่วนริมฝีปาก</h4>
-       <div class="score-display">
-        <div class="score-value">{{ analysisScores.lipFullness.toFixed(1) }}<span>%</span></div>
-        <div class="progress-bar-container">
-          <div class="progress-bar" :style="{ width: analysisScores.lipFullness + '%' }"></div>
-        </div>
-      </div>
-      <p class="interpretation">{{ lipFullnessInterpretation }}</p>
     </div>
     <div v-if="errorMessage" class="card result-card error">
       <h4>เกิดข้อผิดพลาด</h4>
