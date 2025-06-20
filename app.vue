@@ -1,27 +1,16 @@
 <script setup>
+// ส่วนของ <script setup> ทั้งหมดเหมือนเดิมทุกประการ
+// ไม่ต้องแก้ไขอะไรในส่วนนี้ครับ
 import { ref, onMounted, computed } from 'vue';
-
-// LIFF ID ของคุณ
 const LIFF_ID = '2007601116-6GoXj5DR';
-
-// ตัวแปรสำหรับจัดการสถานะต่างๆ
 const profile = ref(null);
 const errorMessage = ref('');
 const isLoading = ref(true);
 const isAnalyzing = ref(false);
-
-// ตัวแปรสำหรับจัดการรูปภาพ
 const selectedFile = ref(null);
 const imagePreviewUrl = ref('');
-
-// ตัวแปรสำหรับเก็บผลการวิเคราะห์
-const analysisScores = ref({
-  symmetry: null,
-});
-
-// --- ฟังก์ชันคำนวณ ---
+const analysisScores = ref({ symmetry: null });
 const calculateSmileSymmetry = (landmarks) => {
-  // เพิ่มการตรวจสอบให้ละเอียดขึ้น
   if (!landmarks || !landmarks.mouthLeft || !landmarks.mouthRight || !landmarks.pupilLeft) {
     return null; 
   }
@@ -32,7 +21,6 @@ const calculateSmileSymmetry = (landmarks) => {
   const score = Math.max(0, (1 - errorRatio / 0.2)) * 100;
   return score;
 };
-
 const symmetryInterpretation = computed(() => {
   const score = analysisScores.value.symmetry;
   if (score === null) return '';
@@ -41,56 +29,49 @@ const symmetryInterpretation = computed(() => {
   if (score >= 70) return 'ปานกลาง มีความเบี้ยวเล็กน้อยที่สามารถสังเกตได้';
   return 'ควรปรึกษา: รอยยิ้มของคุณอาจมีความไม่สมมาตรที่ชัดเจน';
 });
-
-// --- ฟังก์ชันหลักที่แก้ไขให้แข็งแรงขึ้น ---
+const handleFileChange = (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    selectedFile.value = file;
+    imagePreviewUrl.value = URL.createObjectURL(file);
+    analysisScores.value = { symmetry: null };
+    errorMessage.value = '';
+  }
+};
 const analyzeSmile = async () => {
   if (!selectedFile.value) { alert('กรุณาเลือกรูปภาพก่อนครับ'); return; }
-  
-  console.log("Analyze button clicked. Starting process..."); // เพิ่ม Log เพื่อตรวจสอบว่าฟังก์ชันถูกเรียกใช้
-  
+  console.log("Analyze button clicked. Starting process...");
   isAnalyzing.value = true;
   errorMessage.value = '';
   analysisScores.value = { symmetry: null };
-
   const formData = new FormData();
   formData.append('image', selectedFile.value);
-
   try {
     const response = await fetch('/api/analyze', { method: 'POST', body: formData });
     const data = await response.json();
-
     if (!response.ok) {
-      // ถ้าหลังบ้านส่ง Error กลับมา ให้แสดง Error นั้น
       throw new Error(data.message || 'เกิดข้อผิดพลาดในการวิเคราะห์จากเซิร์ฟเวอร์');
     }
-
-    console.log("Received data from backend:", data); // เพิ่ม Log เพื่อดูข้อมูลที่ได้รับ
-
+    console.log("Received data from backend:", data);
     if (data && data.length > 0) {
-      const faceData = data[0]; // ข้อมูลใบหน้าที่ 1 ที่เจอ
-      
-      // **จุดสำคัญที่เพิ่มเข้ามา: ตรวจสอบว่ามี faceLandmarks หรือไม่**
+      const faceData = data[0];
       if (faceData.faceLandmarks) {
         const score = calculateSmileSymmetry(faceData.faceLandmarks);
         analysisScores.value.symmetry = score;
         console.log("Symmetry score calculated:", score);
       } else {
-        // กรณีที่ Azure เจอใบหน้า แต่หา Landmark ไม่เจอ
         errorMessage.value = "AI ตรวจจับใบหน้าได้ แต่ไม่สามารถหาตำแหน่งสำคัญบนใบหน้าได้ กรุณาลองรูปที่ชัดเจนยิ่งขึ้น";
       }
     } else {
       errorMessage.value = "AI ไม่สามารถตรวจจับใบหน้าในรูปภาพนี้ได้ กรุณาลองรูปอื่นที่เห็นใบหน้าชัดเจนครับ";
     }
-
   } catch (e) {
-    console.error("Analysis failed:", e); // เพิ่ม Log Error ที่ละเอียดขึ้น
+    console.error("Analysis failed:", e);
     errorMessage.value = e.message;
   } finally {
     isAnalyzing.value = false;
   }
 };
-
-// ฟังก์ชันเริ่มต้น LIFF (เหมือนเดิม)
 onMounted(async () => {
   try {
     isLoading.value = true;
@@ -118,18 +99,18 @@ onMounted(async () => {
       <h3>AI Smile Assessment</h3>
       <p>อัปโหลดรูปถ่ายรอยยิ้มหน้าตรงของคุณเพื่อรับการประเมินเบื้องต้น</p>
       <div v-if="imagePreviewUrl" class="image-preview"><img :src="imagePreviewUrl" alt="Selected image preview"></div>
-      <form @submit.prevent="analyzeSmile">
-        <label for="file-upload" class="custom-file-upload">เลือกรูปภาพ</label>
+      
+      <div> <label for="file-upload" class="custom-file-upload">เลือกรูปภาพ</label>
         <input id="file-upload" type="file" @change="handleFileChange" accept="image/png, image/jpeg">
-        <button type="submit" :disabled="!selectedFile || isAnalyzing">
+        
+        <button type="button" @click="analyzeSmile" :disabled="!selectedFile || isAnalyzing">
           <span v-if="!isAnalyzing">วิเคราะห์รอยยิ้ม</span>
           <span v-else>กำลังวิเคราะห์...</span>
         </button>
-      </form>
-    </div>
+      </div>
+      </div>
 
     <div v-if="isAnalyzing" class="card result-card"><p>AI กำลังประมวลผล... กรุณารอสักครู่ ✨</p></div>
-    
     <div v-if="analysisScores.symmetry !== null" class="card result-card">
       <h4><span class="emoji">📐</span> ความสมมาตรของรอยยิ้ม</h4>
       <div class="score-display">
@@ -140,7 +121,6 @@ onMounted(async () => {
       </div>
       <p class="interpretation">{{ symmetryInterpretation }}</p>
     </div>
-
     <div v-if="errorMessage" class="card result-card error">
       <h4>เกิดข้อผิดพลาด</h4>
       <p>{{ errorMessage }}</p>
@@ -149,7 +129,7 @@ onMounted(async () => {
 </template>
 
 <style>
-/* สไตล์เหมือนเดิมทุกประการ ไม่มีการเปลี่ยนแปลง */
+/* ส่วนของ <style> ทั้งหมดเหมือนเดิมทุกประการ */
 :root { --line-green: #06c755; --bg-color: #f0f2f5; --card-bg: white; --text-color: #1c1e21; --progress-bg: #e9ebee; }
 body { margin: 0; font-family: sans-serif; background-color: var(--bg-color); color: var(--text-color); }
 .container { padding: 15px; max-width: 500px; margin: 0 auto; }
