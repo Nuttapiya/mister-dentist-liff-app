@@ -1,24 +1,28 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import imageCompression from 'browser-image-compression'; // <-- 1. Import library ใหม่
 
 // LIFF ID ของคุณ
 const LIFF_ID = '2007601116-6GoXj5DR';
 
-// ตัวแปรต่างๆ เหมือนเดิม
+// ตัวแปรสำหรับจัดการสถานะต่างๆ
 const profile = ref(null);
 const errorMessage = ref('');
 const isLoading = ref(true);
 const isAnalyzing = ref(false);
+
+// ตัวแปรสำหรับจัดการรูปภาพ
 const selectedFile = ref(null);
 const imagePreviewUrl = ref('');
+
+// --- อัปเดต: เพิ่ม 'cant' เข้าไปในผลการวิเคราะห์ ---
 const analysisScores = ref({
   symmetry: null,
+  cant: null,
 });
 
-// ฟังก์ชันคำนวณและตีความ (เหมือนเดิม)
+// --- ฟังก์ชันคำนวณ ---
 const calculateSmileSymmetry = (landmarks) => {
-  if (!landmarks || !landmarks.mouthLeft || !landmarks.mouthRight || !landmarks.pupilLeft) { return null; }
+  if (!landmarks || !landmarks.mouthLeft || !landmarks.mouthRight || !landmarks.pupilLeft) return null;
   const verticalDifference = Math.abs(landmarks.mouthLeft.y - landmarks.mouthRight.y);
   const normalizationFactor = Math.abs(landmarks.mouthLeft.y - landmarks.pupilLeft.y);
   if (normalizationFactor === 0) return 100;
@@ -26,6 +30,26 @@ const calculateSmileSymmetry = (landmarks) => {
   const score = Math.max(0, (1 - errorRatio / 0.2)) * 100;
   return score;
 };
+
+// --- ฟังก์ชันใหม่: คำนวณความเอียงของรอยยิ้ม ---
+const calculateSmileCant = (landmarks) => {
+  if (!landmarks.pupilLeft || !landmarks.pupilRight || !landmarks.mouthLeft || !landmarks.mouthRight) {
+    return null;
+  }
+  // ฟังก์ชันย่อยสำหรับหาองศาของเส้นตรง
+  const getAngle = (p1, p2) => Math.atan2(p2.y - p1.y, p2.x - p1.x) * (180 / Math.PI);
+
+  // หาองศาของเส้นดวงตาและเส้นรอยยิ้ม
+  const eyeAngle = getAngle(landmarks.pupilLeft, landmarks.pupilRight);
+  const mouthAngle = getAngle(landmarks.mouthLeft, landmarks.mouthRight);
+
+  // ความเอียงคือผลต่างขององศาทั้งสอง
+  const cantAngle = Math.abs(eyeAngle - mouthAngle);
+  
+  return cantAngle;
+};
+
+// --- ฟังก์ชันตีความผล ---
 const symmetryInterpretation = computed(() => {
   const score = analysisScores.value.symmetry;
   if (score === null) return '';
@@ -34,64 +58,42 @@ const symmetryInterpretation = computed(() => {
   if (score >= 70) return 'ปานกลาง มีความเบี้ยวเล็กน้อยที่สามารถสังเกตได้';
   return 'ควรปรึกษา: รอยยิ้มของคุณอาจมีความไม่สมมาตรที่ชัดเจน';
 });
-const handleFileChange = (event) => {
-  const file = event.target.files[0];
-  if (file) {
-    selectedFile.value = file;
-    imagePreviewUrl.value = URL.createObjectURL(file);
-    analysisScores.value = { symmetry: null };
-    errorMessage.value = '';
-  }
-};
 
+const cantInterpretation = computed(() => {
+  const angle = analysisScores.value.cant;
+  if (angle === null) return '';
+  if (angle <= 2.0) return 'ยอดเยี่ยม! ระนาบรอยยิ้มของคุณขนานกับดวงตาเป็นอย่างดี';
+  if (angle <= 4.0) return 'ดี! มีความเอียงเล็กน้อย ซึ่งถือว่าอยู่ในเกณฑ์ปกติ';
+  return 'ควรปรึกษา: ระนาบรอยยิ้มของคุณมีความเอียงที่อาจสังเกตเห็นได้';
+});
 
-// --- 2. อัปเดตฟังก์ชัน analyzeSmile ---
 const analyzeSmile = async () => {
   if (!selectedFile.value) { alert('กรุณาเลือกรูปภาพก่อนครับ'); return; }
-  
   isAnalyzing.value = true;
   errorMessage.value = '';
-  analysisScores.value = { symmetry: null };
+  analysisScores.value = { symmetry: null, cant: null }; // รีเซ็ตคะแนน
 
   try {
-    // --- จุดที่เพิ่มเข้ามา ---
-    console.log(`Original file size: ${(selectedFile.value.size / 1024 / 1024).toFixed(2)} MB`);
-
-    // ตั้งค่าการบีบอัดไฟล์
-    const options = {
-      maxSizeMB: 2,          // ตั้งค่าขนาดไฟล์สูงสุดไม่เกิน 2MB
-      maxWidthOrHeight: 1920, // ตั้งค่าด้านที่ยาวที่สุดของรูปไม่เกิน 1920px
-      useWebWorker: true,    // ใช้ Web Worker เพื่อการทำงานที่เร็วขึ้น
-    };
-
-    // ทำการบีบอัดไฟล์
+    const options = { maxSizeMB: 2, maxWidthOrHeight: 1920, useWebWorker: true };
     const compressedFile = await imageCompression(selectedFile.value, options);
-    console.log(`Compressed file size: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
-    // ----------------------
-
     const formData = new FormData();
-    // ส่งไฟล์ที่ถูกบีบอัดแล้วไปแทน
     formData.append('image', compressedFile);
-
     const response = await fetch('/api/analyze', { method: 'POST', body: formData });
     const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'เกิดข้อผิดพลาดในการวิเคราะห์จากเซิร์ฟเวอร์');
-    }
+    if (!response.ok) { throw new Error(data.message || 'เกิดข้อผิดพลาดในการวิเคราะห์จากเซิร์ฟเวอร์'); }
 
     if (data && data.length > 0) {
       const faceData = data[0];
       if (faceData.faceLandmarks) {
-        const score = calculateSmileSymmetry(faceData.faceLandmarks);
-        analysisScores.value.symmetry = score;
+        // --- อัปเดต: เรียกใช้ฟังก์ชันคำนวณทั้งสองตัว ---
+        analysisScores.value.symmetry = calculateSmileSymmetry(faceData.faceLandmarks);
+        analysisScores.value.cant = calculateSmileCant(faceData.faceLandmarks);
       } else {
         errorMessage.value = "AI ตรวจจับใบหน้าได้ แต่ไม่สามารถหาตำแหน่งสำคัญบนใบหน้าได้ กรุณาลองรูปที่ชัดเจนยิ่งขึ้น";
       }
     } else {
       errorMessage.value = "AI ไม่สามารถตรวจจับใบหน้าในรูปภาพนี้ได้ กรุณาลองรูปอื่นที่เห็นใบหน้าชัดเจนครับ";
     }
-
   } catch (e) {
     errorMessage.value = e.message;
   } finally {
@@ -99,7 +101,8 @@ const analyzeSmile = async () => {
   }
 };
 
-// onMounted เหมือนเดิม
+// onMounted และ import อื่นๆ เหมือนเดิม
+import imageCompression from 'browser-image-compression';
 onMounted(async () => {
   try {
     isLoading.value = true;
@@ -114,6 +117,16 @@ onMounted(async () => {
     isLoading.value = false;
   }
 });
+const handleFileChange = (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    selectedFile.value = file;
+    imagePreviewUrl.value = URL.createObjectURL(file);
+    analysisScores.value = { symmetry: null, cant: null };
+    errorMessage.value = '';
+  }
+};
+
 </script>
 
 <template>
@@ -150,6 +163,13 @@ onMounted(async () => {
       <p class="interpretation">{{ symmetryInterpretation }}</p>
     </div>
 
+    <div v-if="analysisScores.cant !== null" class="card result-card">
+      <h4><span class="emoji">📏</span> ความเอียงของรอยยิ้ม</h4>
+      <div class="score-display">
+        <div class="score-value">{{ analysisScores.cant.toFixed(2) }}<span>°</span></div>
+      </div>
+      <p class="interpretation">{{ cantInterpretation }}</p>
+    </div>
     <div v-if="errorMessage" class="card result-card error">
       <h4>เกิดข้อผิดพลาด</h4>
       <p>{{ errorMessage }}</p>
