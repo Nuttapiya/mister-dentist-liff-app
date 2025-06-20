@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
+import imageCompression from 'browser-image-compression';
 
 // LIFF ID ของคุณ
 const LIFF_ID = '2007601116-6GoXj5DR';
@@ -9,20 +10,19 @@ const profile = ref(null);
 const errorMessage = ref('');
 const isLoading = ref(true);
 const isAnalyzing = ref(false);
-
-// ตัวแปรสำหรับจัดการรูปภาพ
 const selectedFile = ref(null);
 const imagePreviewUrl = ref('');
 
-// --- อัปเดต: เพิ่ม 'cant' เข้าไปในผลการวิเคราะห์ ---
+// --- อัปเดต: เพิ่ม 'chin' เข้าไปในผลการวิเคราะห์ ---
 const analysisScores = ref({
   symmetry: null,
   cant: null,
+  chin: null,
 });
 
 // --- ฟังก์ชันคำนวณ ---
 const calculateSmileSymmetry = (landmarks) => {
-  if (!landmarks || !landmarks.mouthLeft || !landmarks.mouthRight || !landmarks.pupilLeft) return null;
+  if (!landmarks?.mouthLeft || !landmarks?.mouthRight || !landmarks?.pupilLeft) return null;
   const verticalDifference = Math.abs(landmarks.mouthLeft.y - landmarks.mouthRight.y);
   const normalizationFactor = Math.abs(landmarks.mouthLeft.y - landmarks.pupilLeft.y);
   if (normalizationFactor === 0) return 100;
@@ -31,23 +31,37 @@ const calculateSmileSymmetry = (landmarks) => {
   return score;
 };
 
-// --- ฟังก์ชันใหม่: คำนวณความเอียงของรอยยิ้ม ---
 const calculateSmileCant = (landmarks) => {
-  if (!landmarks.pupilLeft || !landmarks.pupilRight || !landmarks.mouthLeft || !landmarks.mouthRight) {
-    return null;
-  }
-  // ฟังก์ชันย่อยสำหรับหาองศาของเส้นตรง
+  if (!landmarks?.pupilLeft || !landmarks?.pupilRight || !landmarks?.mouthLeft || !landmarks?.mouthRight) return null;
   const getAngle = (p1, p2) => Math.atan2(p2.y - p1.y, p2.x - p1.x) * (180 / Math.PI);
-
-  // หาองศาของเส้นดวงตาและเส้นรอยยิ้ม
   const eyeAngle = getAngle(landmarks.pupilLeft, landmarks.pupilRight);
   const mouthAngle = getAngle(landmarks.mouthLeft, landmarks.mouthRight);
-
-  // ความเอียงคือผลต่างขององศาทั้งสอง
-  const cantAngle = Math.abs(eyeAngle - mouthAngle);
-  
-  return cantAngle;
+  return Math.abs(eyeAngle - mouthAngle);
 };
+
+// --- ฟังก์ชันใหม่: คำนวณความเบี้ยวของคาง ---
+const calculateChinDeviation = (landmarks) => {
+  if (!landmarks?.noseTip || !landmarks?.underLipBottom || !landmarks?.pupilLeft || !landmarks?.pupilRight) return null;
+  // หาจุดกึ่งกลางระหว่างดวงตาเพื่อเป็นจุดอ้างอิงบนของใบหน้า
+  const midPointBetweenEyesX = (landmarks.pupilLeft.x + landmarks.pupilRight.x) / 2;
+  // หาเส้นกึ่งกลางใบหน้าแนวดิ่ง (ใช้ค่าเฉลี่ย X ของจมูกและกึ่งกลางตา)
+  const facialMidlineX = (landmarks.noseTip.x + midPointBetweenEyesX) / 2;
+
+  // คำนวณระยะห่างแนวนอนของคางจากเส้นกึ่งกลาง
+  const horizontalDeviation = Math.abs(landmarks.underLipBottom.x - facialMidlineX);
+
+  // หาค่าอ้างอิงเพื่อแปลงเป็นเปอร์เซ็นต์ (ใช้ความกว้างระหว่างดวงตา)
+  const normalizationFactor = Math.abs(landmarks.pupilRight.x - landmarks.pupilLeft.x);
+  if (normalizationFactor === 0) return 100;
+
+  // คำนวณอัตราส่วนความเบี้ยว
+  const deviationRatio = horizontalDeviation / normalizationFactor;
+
+  // แปลงเป็นคะแนนเต็ม 100 (ยิ่งใกล้ยิ่งดี)
+  const score = Math.max(0, (1 - deviationRatio / 0.1)) * 100;
+  return score;
+};
+
 
 // --- ฟังก์ชันตีความผล ---
 const symmetryInterpretation = computed(() => {
@@ -55,7 +69,6 @@ const symmetryInterpretation = computed(() => {
   if (score === null) return '';
   if (score >= 95) return 'ยอดเยี่ยม! รอยยิ้มของคุณมีความสมมาตรในระดับที่ดีมาก';
   if (score >= 85) return 'ดี! มีความสมมาตรในระดับที่ดี อาจปรับปรุงได้เล็กน้อย';
-  if (score >= 70) return 'ปานกลาง มีความเบี้ยวเล็กน้อยที่สามารถสังเกตได้';
   return 'ควรปรึกษา: รอยยิ้มของคุณอาจมีความไม่สมมาตรที่ชัดเจน';
 });
 
@@ -67,11 +80,20 @@ const cantInterpretation = computed(() => {
   return 'ควรปรึกษา: ระนาบรอยยิ้มของคุณมีความเอียงที่อาจสังเกตเห็นได้';
 });
 
+const chinInterpretation = computed(() => {
+  const score = analysisScores.value.chin;
+  if (score === null) return '';
+  if (score >= 90) return 'ยอดเยี่ยม! คางของคุณอยู่ในตำแหน่งกึ่งกลางใบหน้าที่สมดุล';
+  if (score >= 75) return 'ดี! มีการเบี่ยงเบนจากแนวกึ่งกลางเล็กน้อย ซึ่งพบได้ทั่วไป';
+  return 'ควรปรึกษา: คางของคุณมีการเบี่ยงเบนจากแนวกึ่งกลางที่อาจส่งผลต่อโครงสร้างใบหน้า';
+});
+
+
 const analyzeSmile = async () => {
   if (!selectedFile.value) { alert('กรุณาเลือกรูปภาพก่อนครับ'); return; }
   isAnalyzing.value = true;
   errorMessage.value = '';
-  analysisScores.value = { symmetry: null, cant: null }; // รีเซ็ตคะแนน
+  analysisScores.value = { symmetry: null, cant: null, chin: null };
 
   try {
     const options = { maxSizeMB: 2, maxWidthOrHeight: 1920, useWebWorker: true };
@@ -85,9 +107,10 @@ const analyzeSmile = async () => {
     if (data && data.length > 0) {
       const faceData = data[0];
       if (faceData.faceLandmarks) {
-        // --- อัปเดต: เรียกใช้ฟังก์ชันคำนวณทั้งสองตัว ---
+        // --- อัปเดต: เรียกใช้ฟังก์ชันคำนวณทั้งสามตัว ---
         analysisScores.value.symmetry = calculateSmileSymmetry(faceData.faceLandmarks);
         analysisScores.value.cant = calculateSmileCant(faceData.faceLandmarks);
+        analysisScores.value.chin = calculateChinDeviation(faceData.faceLandmarks);
       } else {
         errorMessage.value = "AI ตรวจจับใบหน้าได้ แต่ไม่สามารถหาตำแหน่งสำคัญบนใบหน้าได้ กรุณาลองรูปที่ชัดเจนยิ่งขึ้น";
       }
@@ -101,8 +124,6 @@ const analyzeSmile = async () => {
   }
 };
 
-// onMounted และ import อื่นๆ เหมือนเดิม
-import imageCompression from 'browser-image-compression';
 onMounted(async () => {
   try {
     isLoading.value = true;
@@ -122,7 +143,7 @@ const handleFileChange = (event) => {
   if (file) {
     selectedFile.value = file;
     imagePreviewUrl.value = URL.createObjectURL(file);
-    analysisScores.value = { symmetry: null, cant: null };
+    analysisScores.value = { symmetry: null, cant: null, chin: null };
     errorMessage.value = '';
   }
 };
@@ -169,6 +190,17 @@ const handleFileChange = (event) => {
         <div class="score-value">{{ analysisScores.cant.toFixed(2) }}<span>°</span></div>
       </div>
       <p class="interpretation">{{ cantInterpretation }}</p>
+    </div>
+
+    <div v-if="analysisScores.chin !== null" class="card result-card">
+      <h4><span class="emoji">📍</span> ความสมมาตรของคาง</h4>
+      <div class="score-display">
+        <div class="score-value">{{ analysisScores.chin.toFixed(1) }}<span>%</span></div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" :style="{ width: analysisScores.chin + '%' }"></div>
+        </div>
+      </div>
+      <p class="interpretation">{{ chinInterpretation }}</p>
     </div>
     <div v-if="errorMessage" class="card result-card error">
       <h4>เกิดข้อผิดพลาด</h4>
