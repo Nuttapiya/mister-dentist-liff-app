@@ -4,7 +4,7 @@ import imageCompression from 'browser-image-compression';
 
 const LIFF_ID = '2007601116-6GoXj5DR';
 
-// ตัวแปรสถานะต่างๆ (เหมือนเดิม)
+// ตัวแปรและฟังก์ชันทั้งหมดเหมือนเดิม...
 const profile = ref(null);
 const errorMessage = ref('');
 const isLoading = ref(true);
@@ -16,8 +16,6 @@ const analysisScores = ref({
   cant: null,
   chin: null,
 });
-
-// ฟังก์ชันคำนวณและตีความผล (เหมือนเดิม)
 const calculateSmileSymmetry = (landmarks) => {
   if (!landmarks?.mouthLeft || !landmarks?.mouthRight || !landmarks?.pupilLeft) return null;
   const verticalDifference = Math.abs(landmarks.mouthLeft.y - landmarks.mouthRight.y);
@@ -70,10 +68,10 @@ const overallRecommendation = computed(() => {
   const { symmetry, cant, chin } = analysisScores.value;
   if (symmetry === null || cant === null || chin === null) return null;
   if (symmetry >= 95 && cant <= 2.0 && chin >= 90) return { title: "รอยยิ้มสมบูรณ์แบบ! ✨", message: "ผลการวิเคราะห์บ่งชี้ว่าคุณมีโครงสร้างรอยยิ้มและใบหน้าที่สมดุลในระดับดีเยี่ยม หากต้องการเสริมความมั่นใจให้ถึงขีดสุด การฟอกสีฟันอาจเป็นทางเลือกที่น่าสนใจสำหรับคุณ", cta: "สนใจโปรโมชั่นฟอกสีฟัน" };
-  if (chin < 75) return { title: "พบข้อควรพิจารณาด้านโครงสร้างใบหน้า", message: "AI ตรวจพบว่าคางของคุณอาจไม่ได้อยู่ในตำแหน่งกึ่งกลางใบหน้า ซึ่งอาจส่งผลต่อการสบฟันและรูปหน้าโดยรวม การจัดฟันอาจเป็นทางเลือกหนึ่งในการแก้ปัญหานี้", cta: "สนใจปรึกษาเรื่องจัดฟัน" };
-  if (cant > 4.0) return { title: "พบความเอียงของรอยยิ้ม", message: "AI ตรวจพบว่าระนาบรอยยิ้มของคุณอาจมีความเอียงเมื่อเทียบกับดวงตา การทำวีเนียร์ หรือการจัดฟัน สามารถช่วยปรับองศาของรอยยิ้มให้สวยงามและน่าดึงดูดยิ่งขึ้น", cta: "สนใจปรึกษาเรื่องวีเนียร์/จัดฟัน" };
-  if (symmetry < 85) return { title: "พบความไม่สมมาตรของรอยยิ้ม", message: "AI ตรวจพบว่ามุมปากของคุณอาจยกตัวไม่เท่ากันเล็กน้อย การปรับปรุงรอยยิ้มด้วยการจัดฟันจะช่วยให้รอยยิ้มของคุณดูสมดุลและสวยงามยิ่งขึ้นได้", cta: "สนใจปรึกษาเรื่องจัดฟัน" };
-  return { title: "รอยยิ้มของคุณอยู่ในเกณฑ์ที่ดี", message: "ผลการวิเคราะห์โดยรวมของคุณอยู่ในเกณฑ์ดี หากต้องการให้รอยยิ้มสวยงามสมบูรณ์แบบในทุกมิติมากยิ่งขึ้น สามารถนัดเข้ามาเพื่อปรึกษาและวางแผนการรักษาเฉพาะบุคคลได้เลย", cta: "สนใจนัดปรึกษาทันตแพทย์" };
+  if (chin < 75) return { title: "พบข้อควรพิจารณาด้านโครงสร้างใบหน้า", message: "AI ตรวจพบว่าคางของคุณอาจไม่ได้อยู่ในตำแหน่งกึ่งกลางใบหน้า ซึ่งอาจส่งผลต่อการสบฟันและรูปหน้าโดยรวม การจัดฟันอาจเป็นทางเลือกหนึ่งในการแก้ปัญหานี้", cta: "สนใจปรึกษาเรื่องจัดฟันปรับโครงสร้างหน้า" };
+  if (cant > 4.0) return { title: "พบความเอียงของรอยยิ้ม", message: "AI ตรวจพบว่าระนาบรอยยิ้มของคุณอาจมีความเอียงเมื่อเทียบกับดวงตา การทำวีเนียร์ หรือการจัดฟันใส สามารถช่วยปรับองศาของรอยยิ้มให้สวยงามและน่าดึงดูดยิ่งขึ้น", cta: "สนใจปรึกษาเรื่องวีเนียร์/จัดฟันใส" };
+  if (symmetry < 85) return { title: "พบความไม่สมมาตรของรอยยิ้ม", message: "AI ตรวจพบว่ามุมปากของคุณอาจยกตัวไม่เท่ากันเล็กน้อย การปรับปรุงรอยยิ้มด้วยการจัดฟันใสจะช่วยให้รอยยิ้มของคุณดูสมดุลและสวยงามยิ่งขึ้นได้", cta: "สนใจปรึกษาเรื่องจัดฟันใส" };
+  return { title: "รอยยิ้มของคุณอยู่ในเกณฑ์ที่ดี", message: "ผลการวิเคราะห์โดยรวมของคุณอยู่ในเกณฑ์ดี หากต้องการให้รอยยิ้มสวยงามสมบูรณ์แบบในทุกมิติ สามารถนัดเข้ามาเพื่อปรึกษาและวางแผนการรักษาเฉพาะบุคคลได้เลย", cta: "สนใจนัดปรึกษาทันตแพทย์" };
 });
 const handleFileChange = (event) => {
   const file = event.target.files[0];
@@ -109,33 +107,25 @@ const analyzeSmile = async () => {
   finally { isAnalyzing.value = false; }
 };
 
-// --- ฟังก์ชัน CTA ที่แก้ไขแล้ว ---
+// --- ฟังก์ชัน CTA ที่แก้ไขเพื่อแสดง Error ที่แท้จริง ---
 const handleCtaClick = async () => {
   if (!overallRecommendation.value || isLoading.value) return;
-
   const messageToSend = `สวัสดีค่ะ สนใจ "${overallRecommendation.value.cta}" จากผลการวิเคราะห์ของ AI Smile Assessment ค่ะ`;
-
   try {
     const liffModule = await import('@line/liff');
     const liff = liffModule.default;
-    
-    // --- จุดที่แก้ไข ---
-    // แก้จาก 'shareTargetPicker' เป็น 'sendMessages'
     if (liff.isInClient() && liff.isApiAvailable('sendMessages')) {
-    // ------------------
-       await liff.sendMessages([
-        {
-          type: 'text',
-          text: messageToSend,
-        },
-      ]);
-      liff.closeWindow();
+       await liff.sendMessages([{ type: 'text', text: messageToSend }]);
+       liff.closeWindow();
     } else {
-      alert(`ฟังก์ชันส่งข้อความใช้ได้เฉพาะในแอป LINE เท่านั้น\n\nข้อความที่จะถูกส่ง:\n${messageToSend}`);
+      alert(`ฟังก์ชันส่งข้อความใช้ได้เฉพาะในแอป LINE เท่านั้น`);
     }
   } catch (error) {
-    console.error('LIFF sendMessages error:', error);
-    errorMessage.value = 'ไม่สามารถส่งข้อความได้ กรุณาลองอีกครั้ง';
+    // --- จุดที่แก้ไข ---
+    // เราจะแสดงข้อมูล Error ทั้งหมดที่ได้รับจาก LIFF SDK โดยตรง
+    console.error('LIFF sendMessages FAILED. Full error object:', JSON.stringify(error, null, 2));
+    errorMessage.value = `เกิดข้อผิดพลาด aoa: ${error.message} (Code: ${error.code})`;
+    // ------------------
   }
 };
 
@@ -187,6 +177,10 @@ onMounted(async () => {
       <button class="cta-button" @click="handleCtaClick">{{ overallRecommendation.cta }}</button>
     </div>
     <div v-if="errorMessage" class="card result-card error"><h4>เกิดข้อผิดพลาด</h4><p>{{ errorMessage }}</p></div>
+    <footer class="footer-links">
+        <p>การวิเคราะห์นี้เป็นการประเมินเบื้องต้นโดย AI และไม่สามารถใช้แทนการวินิจฉัยจากทันตแพทย์ผู้เชี่ยวชาญได้</p>
+        <a href="#" target="_blank">ข้อตกลงในการใช้งาน</a> | <a href="#" target="_blank">นโยบายความเป็นส่วนตัว</a>
+    </footer>
   </div>
 </template>
 
@@ -220,4 +214,8 @@ button:disabled { background-color: #a5d3b6; cursor: not-allowed; }
 .recommendation-card h4 { font-size: 18px; color: #333; margin-top: 10px; }
 .recommendation-card p { font-size: 15px; color: #333; line-height: 1.6; }
 .recommendation-card .cta-button { margin-top: 15px; }
+.footer-links { text-align: center; margin-top: 30px; padding: 0 10px;}
+.footer-links p { font-size: 12px; color: #888; margin-bottom: 5px; }
+.footer-links a { font-size: 12px; color: #555; text-decoration: none; }
+.footer-links a:hover { text-decoration: underline; }
 </style>
