@@ -116,19 +116,40 @@ const mouthCenteringInterpretation = computed(() => {
   return 'ควรปรึกษา: ตำแหน่งปากของคุณอาจไม่สมดุลกับแนวกึ่งกลางใบหน้า';
 });
 
-// --- อัปเดต: เพิ่ม Mouth Centering ในการสร้างคำแนะนำ ---
 const overallRecommendation = computed(() => {
   const { symmetry, cant, chin, mouthCentering } = analysisScores.value;
   if (symmetry === null || cant === null || chin === null || mouthCentering === null) return null;
-  if (symmetry >= 95 && cant <= 2.0 && chin >= 90 && mouthCentering >= 90) return { title: "รอยยิ้มสมบูรณ์แบบ! ✨", message: "ผลการวิเคราะห์บ่งชี้ว่าคุณมีโครงสร้างรอยยิ้มและใบหน้าที่สมดุลในระดับดีเยี่ยม หากต้องการเสริมความมั่นใจให้ถึงขีดสุด การฟอกสีฟันอาจเป็นทางเลือกที่น่าสนใจสำหรับคุณ", cta: "สนใจโปรโมชั่นฟอกสีฟัน" };
-  if (chin < 75) return { title: "พบข้อควรพิจารณาด้านโครงสร้างใบหน้า", message: "AI ตรวจพบว่าคางของคุณอาจไม่ได้อยู่ในตำแหน่งกึ่งกลางใบหน้า ซึ่งอาจส่งผลต่อการสบฟันและรูปหน้าโดยรวม การจัดฟันอาจเป็นทางเลือกหนึ่งในการแก้ปัญหานี้", cta: "สนใจปรึกษาเรื่องจัดฟัน" };
-  if (chin >= 90 && mouthCentering < 75) return { title: "พบตำแหน่งปากที่ไม่สมดุล", message: "AI ตรวจพบว่าตำแหน่งปากของคุณไม่สมดุลกับใบหน้าแม้ว่าโครงสร้างคางจะดี ปัญหานี้มักเกี่ยวข้องกับการเรียงตัวของฟัน การจัดฟันสามารถช่วยแก้ไขเรื่องนี้ได้โดยตรง", cta: "สนใจปรึกษาเรื่องการจัดฟัน" };
-  if (cant > 4.0) return { title: "พบความเอียงของรอยยิ้ม", message: "AI ตรวจพบว่าระนาบรอยยิ้มของคุณอาจมีความเอียงเมื่อเทียบกับดวงตา การทำวีเนียร์ หรือการจัดฟัน สามารถช่วยปรับองศาของรอยยิ้มให้สวยงามและน่าดึงดูดยิ่งขึ้น", cta: "สนใจปรึกษาเรื่องวีเนียร์/จัดฟัน" };
-  if (symmetry < 85) return { title: "พบความไม่สมมาตรของรอยยิ้ม", message: "AI ตรวจพบว่ามุมปากของคุณอาจยกตัวไม่เท่ากันเล็กน้อย การปรับปรุงรอยยิ้มด้วยการจัดฟันจะช่วยให้รอยยิ้มของคุณดูสมดุลและสวยงามยิ่งขึ้นได้", cta: "สนใจปรึกษาเรื่องจัดฟัน" };
+
+  // จัดเรียงตรรกะใหม่: เช็คเคสที่ดีที่สุดก่อน, ตามด้วยเคสที่ต้องแก้ไข, และสุดท้ายคือเคสทั่วไป
+  if (symmetry >= 95 && cant <= 2.0 && chin >= 90 && mouthCentering >= 90) {
+    return { title: "รอยยิ้มสมบูรณ์แบบ! ✨", message: "ผลการวิเคราะห์บ่งชี้ว่าคุณมีโครงสร้างรอยยิ้มและใบหน้าที่สมดุลในระดับดีเยี่ยม หากต้องการเสริมความมั่นใจให้ถึงขีดสุด การฟอกสีฟันอาจเป็นทางเลือกที่น่าสนใจสำหรับคุณ", cta: "สนใจโปรโมชั่นฟอกสีฟัน" };
+  }
+  if (chin < 75) {
+    return { title: "พบข้อควรพิจารณาด้านโครงสร้างใบหน้า", message: "AI ตรวจพบว่าคางของคุณอาจไม่ได้อยู่ในตำแหน่งกึ่งกลางใบหน้า ซึ่งอาจส่งผลต่อการสบฟันและรูปหน้าโดยรวม การจัดฟันอาจเป็นทางเลือกหนึ่งในการแก้ปัญหานี้", cta: "สนใจปรึกษาเรื่องจัดฟัน" };
+  }
+  if (mouthCentering < 75 && chin >= 75) {
+     return { title: "พบตำแหน่งปากที่ไม่สมดุล", message: "AI ตรวจพบว่าตำแหน่งปากของคุณไม่สมดุลกับใบหน้าแม้ว่าโครงสร้างคางจะดี ปัญหานี้มักเกี่ยวข้องกับการเรียงตัวของฟัน การจัดฟันสามารถช่วยแก้ไขเรื่องนี้ได้โดยตรง", cta: "สนใจปรึกษาเรื่องการจัดฟัน" };
+  }
+  if (cant > 4.0) {
+    return { title: "พบความเอียงของรอยยิ้ม", message: "AI ตรวจพบว่าระนาบรอยยิ้มของคุณอาจมีความเอียงเมื่อเทียบกับดวงตา การทำวีเนียร์ หรือการจัดฟัน สามารถช่วยปรับองศาของรอยยิ้มให้สวยงามและน่าดึงดูดยิ่งขึ้น", cta: "สนใจปรึกษาเรื่องวีเนียร์/จัดฟัน" };
+  }
+  if (symmetry < 85) {
+    return { title: "พบความไม่สมมาตรของรอยยิ้ม", message: "AI ตรวจพบว่ามุมปากของคุณอาจยกตัวไม่เท่ากันเล็กน้อย การปรับปรุงรอยยิ้มด้วยการจัดฟันจะช่วยให้รอยยิ้มของคุณดูสมดุลและสวยงามยิ่งขึ้นได้", cta: "สนใจปรึกษาเรื่องจัดฟัน" };
+  }
   return { title: "รอยยิ้มของคุณอยู่ในเกณฑ์ที่ดี", message: "ผลการวิเคราะห์โดยรวมของคุณอยู่ในเกณฑ์ดี หากต้องการให้รอยยิ้มสวยงามสมบูรณ์แบบในทุกมิติมากยิ่งขึ้น สามารถนัดเข้ามาเพื่อปรึกษาและวางแผนการรักษาเฉพาะบุคคลได้เลย", cta: "สนใจนัดปรึกษาทันตแพทย์" };
 });
 
 // --- 4. Event Handlers & Lifecycle Hooks ---
+const showModal = (type) => {
+  if (type === 'terms') {
+    modalTitle.value = 'ข้อตกลงในการใช้งาน (Terms of Service)';
+    modalContent.value = termsOfService;
+  } else if (type === 'privacy') {
+    modalTitle.value = 'นโยบายความเป็นส่วนตัว (Privacy Policy)';
+    modalContent.value = privacyPolicy;
+  }
+  isModalVisible.value = true;
+};
 const handleFileChange = (event) => {
   const file = event.target.files[0];
   if (file) {
@@ -189,30 +210,10 @@ onMounted(async () => {
     else { liff.login(); }
   } catch (e) {
     errorMessage.value = "เกิดข้อผิดพลาดในการเชื่อมต่อกับ LINE: " + e.message;
-  } finally {
+  }
+  finally {
     isLoading.value = false;
   }
-
-  // --- เพิ่มโค้ดส่วนนี้เข้าไปท้ายสุดของ onMounted ---
-  // หน่วงเวลาเล็กน้อยเพื่อให้แน่ใจว่า DOM ถูกวาดเสร็จสมบูรณ์
-  setTimeout(() => {
-    const termsLink = document.getElementById('show-terms-link');
-    const privacyLink = document.getElementById('show-privacy-link');
-
-    if (termsLink) {
-      termsLink.addEventListener('click', (event) => {
-        event.preventDefault(); // ป้องกันไม่ให้ลิงก์กระโดด
-        showModal('terms');
-      });
-    }
-
-    if (privacyLink) {
-      privacyLink.addEventListener('click', (event) => {
-        event.preventDefault(); // ป้องกันไม่ให้ลิงก์กระโดด
-        showModal('privacy');
-      });
-    }
-  }, 100); // หน่วงเวลา 100 มิลลิวินาที
 });
 </script>
 
@@ -232,8 +233,8 @@ onMounted(async () => {
 
     <footer class="footer-links">
         <p>การวิเคราะห์นี้เป็นการประเมินเบื้องต้นโดย AI และไม่สามารถใช้แทนการวินิจฉัยจากทันตแพทย์ผู้เชี่ยวชาญได้</p>
-        <a href="#" id="show-terms-link">ข้อตกลงในการใช้งาน</a> | 
-        <a href="#" id="show-privacy-link">นโยบายความเป็นส่วนตัว</a>
+        <a href="#" @click.prevent="showModal('terms')">ข้อตกลงในการใช้งาน</a> | 
+        <a href="#" @click.prevent="showModal('privacy')">นโยบายความเป็นส่วนตัว</a>
     </footer>
     <div v-if="isModalVisible" class="modal-overlay" @click="isModalVisible = false"><div class="modal-content" @click.stop><div class="modal-header"><h3>{{ modalTitle }}</h3><button class="close-button" @click="isModalVisible = false">&times;</button></div><div class="modal-body" v-html="modalContent"></div></div></div>
   </div>
@@ -247,6 +248,7 @@ body { margin: 0; font-family: var(--primary-font); background-color: var(--bg-c
 .profile-header { display: flex; align-items: center; margin-bottom: 15px; font-weight: bold; }
 .profile-pic-small { width: 30px; height: 30px; border-radius: 50%; margin-right: 10px; }
 .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; margin-bottom: 15px; }
+.brand-name { color: #888; font-weight: 500; font-size: 16px; margin-bottom: 0; letter-spacing: 0.5px; }
 .image-preview { margin-bottom: 20px; }
 .image-preview img { max-width: 100%; max-height: 250px; border-radius: 8px; }
 input[type="file"] { display: none; }
@@ -280,11 +282,4 @@ button:disabled { background-color: #a5d3b6; cursor: not-allowed; }
 .close-button { background: none; border: none; font-size: 24px; cursor: pointer; }
 .modal-body { font-size: 14px; line-height: 1.7; text-align: left; }
 .modal-body strong { color: #333; }
-.brand-name {
-  color: #888; /* สีเทาอ่อน */
-  font-weight: 500; /* ความหนาตัวอักษรระดับกลาง */
-  font-size: 16px; /* ขนาดตัวอักษร */
-  margin-bottom: 0; /* ลดระยะห่างด้านล่าง */
-  letter-spacing: 0.5px; /* เพิ่มระยะห่างระหว่างตัวอักษรเล็กน้อย */
-}
 </style>
