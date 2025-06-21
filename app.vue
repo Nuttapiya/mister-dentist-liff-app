@@ -107,25 +107,30 @@ const analyzeSmile = async () => {
   finally { isAnalyzing.value = false; }
 };
 
-// --- ฟังก์ชัน CTA ที่แก้ไขเพื่อแสดง Error ที่แท้จริง ---
+// --- ฟังก์ชัน CTA ที่แก้ไข Bug สุดท้ายแล้ว ---
 const handleCtaClick = async () => {
   if (!overallRecommendation.value || isLoading.value) return;
   const messageToSend = `สวัสดีค่ะ สนใจ "${overallRecommendation.value.cta}" จากผลการวิเคราะห์ของ AI Smile Assessment ค่ะ`;
   try {
     const liffModule = await import('@line/liff');
     const liff = liffModule.default;
-    if (liff.isInClient() && liff.isApiAvailable('sendMessages')) {
+    
+    // --- จุดที่แก้ไข ---
+    // เอา liff.isApiAvailable() ที่เป็นปัญหาออกไป เหลือแค่การเช็คว่าอยู่ในแอป LINE หรือไม่
+    if (liff.isInClient()) {
+    // ------------------
        await liff.sendMessages([{ type: 'text', text: messageToSend }]);
        liff.closeWindow();
     } else {
       alert(`ฟังก์ชันส่งข้อความใช้ได้เฉพาะในแอป LINE เท่านั้น`);
     }
   } catch (error) {
-    // --- จุดที่แก้ไข ---
-    // เราจะแสดงข้อมูล Error ทั้งหมดที่ได้รับจาก LIFF SDK โดยตรง
-    console.error('LIFF sendMessages FAILED. Full error object:', JSON.stringify(error, null, 2));
-    errorMessage.value = `เกิดข้อผิดพลาด aoa: ${error.message} (Code: ${error.code})`;
-    // ------------------
+    console.error('LIFF sendMessages error:', error);
+    if (error && error.code === "CANCEL") {
+        console.log("User cancelled sending message.");
+        return; 
+    }
+    errorMessage.value = 'ไม่สามารถส่งข้อความได้ กรุณาลองอีกครั้ง';
   }
 };
 
@@ -185,7 +190,7 @@ onMounted(async () => {
 </template>
 
 <style>
-/* ส่วน Style ทั้งหมดเหมือนเดิมทุกประการ ไม่มีการเปลี่ยนแปลง */
+/* ส่วน Style ทั้งหมดเหมือนเดิมทุกประการ */
 :root { --line-green: #06c755; --bg-color: #f0f2f5; --card-bg: white; --text-color: #1c1e21; --progress-bg: #e9ebee; --primary-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
 body { margin: 0; font-family: var(--primary-font); background-color: var(--bg-color); color: var(--text-color); }
 .container { padding: 15px; max-width: 500px; margin: 0 auto; }
