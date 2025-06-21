@@ -107,7 +107,7 @@ const analyzeSmile = async () => {
   finally { isAnalyzing.value = false; }
 };
 
-// --- ฟังก์ชัน CTA ที่แก้ไข Bug สุดท้ายแล้ว ---
+// --- ฟังก์ชัน CTA ที่แก้ไขเพื่อตรวจสอบ Context ---
 const handleCtaClick = async () => {
   if (!overallRecommendation.value || isLoading.value) return;
   const messageToSend = `สวัสดีค่ะ สนใจ "${overallRecommendation.value.cta}" จากผลการวิเคราะห์ของ AI Smile Assessment ค่ะ`;
@@ -115,22 +115,33 @@ const handleCtaClick = async () => {
     const liffModule = await import('@line/liff');
     const liff = liffModule.default;
     
-    // --- จุดที่แก้ไข ---
-    // เอา liff.isApiAvailable() ที่เป็นปัญหาออกไป เหลือแค่การเช็คว่าอยู่ในแอป LINE หรือไม่
-    if (liff.isInClient()) {
-    // ------------------
-       await liff.sendMessages([{ type: 'text', text: messageToSend }]);
-       liff.closeWindow();
-    } else {
-      alert(`ฟังก์ชันส่งข้อความใช้ได้เฉพาะในแอป LINE เท่านั้น`);
+    // 1. ตรวจสอบว่าอยู่ในแอป LINE หรือไม่
+    if (!liff.isInClient()) {
+      alert('ฟังก์ชันนี้ใช้ได้เฉพาะในแอป LINE เท่านั้น');
+      return;
     }
+
+    // 2. ตรวจสอบ "บริบท" การเปิด
+    const context = liff.getContext();
+    console.log('LIFF Context:', context); // Log context ไว้ดู
+
+    // ถ้าไม่ได้เปิดจากห้องแชท (utou, group, room) ให้แจ้งผู้ใช้
+    if (context.type === 'none') {
+        errorMessage.value = 'กรุณาเปิดแอปนี้จากห้องแชทของคลินิกโดยตรง เพื่อใช้งานฟังก์ชันส่งข้อความ';
+        return;
+    }
+    
+    // 3. ถ้าทุกอย่างถูกต้อง ให้ส่งข้อความ
+    await liff.sendMessages([{ type: 'text', text: messageToSend }]);
+    liff.closeWindow();
+
   } catch (error) {
-    console.error('LIFF sendMessages error:', error);
+    console.error('LIFF sendMessages FAILED. Full error object:', JSON.stringify(error, null, 2));
     if (error && error.code === "CANCEL") {
         console.log("User cancelled sending message.");
         return; 
     }
-    errorMessage.value = 'ไม่สามารถส่งข้อความได้ กรุณาลองอีกครั้ง';
+    errorMessage.value = `ไม่สามารถส่งข้อความได้ (Code: ${error.code || 'N/A'})`;
   }
 };
 
