@@ -192,6 +192,27 @@ onMounted(async () => {
   } finally {
     isLoading.value = false;
   }
+
+  // --- เพิ่มโค้ดส่วนนี้เข้าไปท้ายสุดของ onMounted ---
+  // หน่วงเวลาเล็กน้อยเพื่อให้แน่ใจว่า DOM ถูกวาดเสร็จสมบูรณ์
+  setTimeout(() => {
+    const termsLink = document.getElementById('show-terms-link');
+    const privacyLink = document.getElementById('show-privacy-link');
+
+    if (termsLink) {
+      termsLink.addEventListener('click', (event) => {
+        event.preventDefault(); // ป้องกันไม่ให้ลิงก์กระโดด
+        showModal('terms');
+      });
+    }
+
+    if (privacyLink) {
+      privacyLink.addEventListener('click', (event) => {
+        event.preventDefault(); // ป้องกันไม่ให้ลิงก์กระโดด
+        showModal('privacy');
+      });
+    }
+  }, 100); // หน่วงเวลา 100 มิลลิวินาที
 });
 </script>
 
@@ -211,8 +232,8 @@ onMounted(async () => {
 
     <footer class="footer-links">
         <p>การวิเคราะห์นี้เป็นการประเมินเบื้องต้นโดย AI และไม่สามารถใช้แทนการวินิจฉัยจากทันตแพทย์ผู้เชี่ยวชาญได้</p>
-        <a href="#" @click.prevent="showModal('terms')">ข้อตกลงในการใช้งาน</a> | 
-        <a href="#" @click.prevent="showModal('privacy')">นโยบายความเป็นส่วนตัว</a>
+        <a href="#" id="show-terms-link">ข้อตกลงในการใช้งาน</a> | 
+        <a href="#" id="show-privacy-link">นโยบายความเป็นส่วนตัว</a>
     </footer>
     <div v-if="isModalVisible" class="modal-overlay" @click="isModalVisible = false"><div class="modal-content" @click.stop><div class="modal-header"><h3>{{ modalTitle }}</h3><button class="close-button" @click="isModalVisible = false">&times;</button></div><div class="modal-body" v-html="modalContent"></div></div></div>
   </div>
