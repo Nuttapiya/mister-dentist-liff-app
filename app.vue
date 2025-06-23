@@ -179,11 +179,11 @@ const handleCtaClick = async () => {
   // สร้างข้อความ 2 บับเบิล
   const message1 = {
     type: 'text',
-    text: `สวัสดีค่ะ สนใจ "${overallRecommendation.value.cta}"`,
+    text: `สวัสดีค่ะ จากผลการวิเคราะห์ของ AI Smile Assessment "${overallRecommendation.value.cta}" ค่ะ`,
   };
   const message2 = {
     type: 'text',
-    text: 'จากผลการวิเคราะห์ของ AI Smile Assessment ค่ะ',
+    text: 'สอบถามการนัดหมายค่ะ',
   };
 
   try {
